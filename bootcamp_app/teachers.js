@@ -7,20 +7,23 @@ const pool = new Pool({
   database: 'bootcampx'
 });
 
+const queryString = `
+  SELECT teachers.name as teacher, COUNT(assistance_requests.*) as total_assistances, cohorts.name as cohort
+  FROM teachers
+  JOIN assistance_requests ON teacher_id = teachers.id
+  JOIN students ON students.id = student_id
+  JOIN cohorts ON cohorts.id = cohort_id
+  WHERE cohorts.name LIKE $1
+  GROUP BY teacher, cohorts.name;
+`;
 
-// -- Get the total number of assistance_requests for a teacher
+const cohortName = process.argv[2];
+// Store all potentially malicious values in an array.
+const values = [`%${cohortName}%`];
 
-pool.query(`
-SELECT teachers.name as teacher, COUNT(assistance_requests.*) as total_assistances, cohorts.name as cohort
-FROM teachers
-JOIN assistance_requests ON teacher_id = teachers.id
-JOIN students ON students.id = student_id
-JOIN cohorts ON cohorts.id = cohort_id
-WHERE cohorts.name LIKE '%${process.argv[2]}%'
-GROUP BY teacher, cohorts.name;
-`)
-.then(res => {
-  res.rows.forEach(user => {
-    console.log(`${user.cohort}: ${user.teacher}`);
-  })
-}).catch(err => console.error('query error', err.stack));
+pool.query(queryString, values)
+  .then(res => {
+    res.rows.forEach(user => {
+      console.log(`${user.cohort}: ${user.teacher}`);
+    })
+  }).catch(err => console.error('query error', err.stack));
